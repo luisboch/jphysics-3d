@@ -15,6 +15,7 @@ import br.pucpr.mage.camera.PerspectiveCamera;
 import br.pucpr.mage.phong.DirectionalLight;
 import br.pucpr.mage.phong.MultiTextureMaterial;
 import br.pucpr.mage.phong.SkyMaterial;
+import br.pucpr.mage.phong.SpaceMaterial;
 import br.pucpr.mage.phong.WaterMaterial;
 import br.pucpr.mage.postfx.PostFXMaterial;
 import br.pucpr.mage.screen.Window;
@@ -56,7 +57,7 @@ public class MainGameScreen extends Screen {
 
     //Dados do skydome
     private Mesh skydome;
-    private SkyMaterial skyMaterial;
+    private SpaceMaterial skyMaterial;
 
     //Dados da água
     private Mesh water;
@@ -108,7 +109,7 @@ public class MainGameScreen extends Screen {
         //Carga do Skydome
         skydome = MeshFactory.createSphere(20, 20);
 
-        skyMaterial = new SkyMaterial();
+        skyMaterial = new SpaceMaterial();
         skyMaterial.setCloud1(new Texture("images/textures/cloud1.png"));
         skyMaterial.setCloud2(new Texture("images/textures/cloud2.png"));
 
@@ -134,7 +135,7 @@ public class MainGameScreen extends Screen {
     @Override
     public void update(float secs) {
         skyMaterial.addTime(secs);
-
+        camera.getTarget().set((float) mouse.getPos().x, (float) -mouse.getPos().y, 0.0f);
     }
 
     public void drawSky(Matrix4f viewMatrix) {
@@ -190,7 +191,7 @@ public class MainGameScreen extends Screen {
         Matrix4f reflexView = new Matrix4f();
         reflexView.lookAt(
                 reflPos,
-                new Vector3f(0f, -0f + WATER_H * 2, 0),
+                new Vector3f((float) mouse.getPos().x, (float) mouse.getPos().y + WATER_H * 2, 0),
                 new Vector3f(0, 1, 0));
         return reflexView;
     }
