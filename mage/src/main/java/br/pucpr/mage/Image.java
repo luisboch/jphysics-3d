@@ -1,5 +1,6 @@
 package br.pucpr.mage;
 
+import br.pucpr.mage.util.ResourceUtil;
 import static org.lwjgl.stb.STBImage.*;
 
 import java.io.IOException;
@@ -32,7 +33,7 @@ public class Image {
     private ByteBuffer loadResourceToBuffer(String resource) throws IOException {
         ByteBuffer buffer;
 
-        Path path = Paths.get(resource);
+        Path path = ResourceUtil.getPath(resource);
         if (Files.isReadable(path)) {
             try (SeekableByteChannel fc = Files.newByteChannel(path)) {
                 buffer = BufferUtils.createByteBuffer((int) fc.size() + 1);

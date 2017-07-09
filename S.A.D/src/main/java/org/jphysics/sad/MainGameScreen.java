@@ -10,6 +10,7 @@ import br.pucpr.mage.Mesh;
 import br.pucpr.mage.Shader;
 import br.pucpr.mage.Texture;
 import br.pucpr.mage.camera.Camera;
+import br.pucpr.mage.camera.OrthographicCamera;
 import br.pucpr.mage.camera.PerspectiveCamera;
 import br.pucpr.mage.phong.DirectionalLight;
 import br.pucpr.mage.phong.MultiTextureMaterial;
@@ -19,6 +20,7 @@ import br.pucpr.mage.postfx.PostFXMaterial;
 import br.pucpr.mage.screen.Window;
 import br.pucpr.mage.screen.Screen;
 import br.pucpr.mage.util.MeshFactory;
+import br.pucpr.mage.util.ResourceUtil;
 import java.io.File;
 import java.io.IOException;
 import org.joml.Matrix4f;
@@ -42,12 +44,10 @@ import static org.lwjgl.opengl.GL11.glPolygonMode;
  */
 public class MainGameScreen extends Screen {
 
-    private static final String PATH = "/home/luis/projects/faculdade/graficos/img/opengl/";
     private static final float WATER_H = 11.0f;
 
-
     //Dados da cena
-    private Camera camera = new PerspectiveCamera();
+    private final Camera camera = new PerspectiveCamera();
     private DirectionalLight light;
 
     //Dados da malha
@@ -61,9 +61,6 @@ public class MainGameScreen extends Screen {
     //Dados da água
     private Mesh water;
     private WaterMaterial waterMaterial;
-
-    private float lookX = 0.0f;
-    private float lookY = 0.0f;
 
     private Mesh canvas;
     private FrameBuffer fb;
@@ -89,7 +86,7 @@ public class MainGameScreen extends Screen {
 
         //Carga do terreno
         try {
-            mesh = MeshFactory.loadTerrain(new File(PATH + "heights/river.png"), 0.4f, 3);
+            mesh = MeshFactory.loadTerrain(ResourceUtil.loadFile("images", "heights/river.png"), 0.4f, 3);
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -102,18 +99,18 @@ public class MainGameScreen extends Screen {
                 0.0f);                          //specular power
 
         material.setTextures(
-                new Texture(PATH + "textures/sand.png"),
-                new Texture(PATH + "textures/grass.png"),
-                new Texture(PATH + "textures/rock.png"),
-                new Texture(PATH + "textures/snow.png")
+                new Texture("images/textures/sand.png"),
+                new Texture("images/textures/grass.png"),
+                new Texture("images/textures/rock.png"),
+                new Texture("images/textures/snow.png")
         );
 
         //Carga do Skydome
         skydome = MeshFactory.createSphere(20, 20);
 
         skyMaterial = new SkyMaterial();
-        skyMaterial.setCloud1(new Texture(PATH + "textures/cloud1.png"));
-        skyMaterial.setCloud2(new Texture(PATH + "textures/cloud2.png"));
+        skyMaterial.setCloud1(new Texture("images/textures/cloud1.png"));
+        skyMaterial.setCloud2(new Texture("images/textures/cloud2.png"));
 
         //Carga da água
         water = MeshFactory.createXZSquare(400, 300, WATER_H);
@@ -136,10 +133,8 @@ public class MainGameScreen extends Screen {
 
     @Override
     public void update(float secs) {
-        float SPEED = 1000 * secs;
-
-        camera.getTarget().set(lookX, lookY, 0.0f);
         skyMaterial.addTime(secs);
+
     }
 
     public void drawSky(Matrix4f viewMatrix) {
@@ -195,7 +190,7 @@ public class MainGameScreen extends Screen {
         Matrix4f reflexView = new Matrix4f();
         reflexView.lookAt(
                 reflPos,
-                new Vector3f(lookX, -lookY + WATER_H * 2, 0),
+                new Vector3f(0f, -0f + WATER_H * 2, 0),
                 new Vector3f(0, 1, 0));
         return reflexView;
     }
@@ -238,7 +233,6 @@ public class MainGameScreen extends Screen {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         canvas.draw(postFX);
     }
-
 
     public static void main(String[] args) {
         Window window = new Window(new MainGameScreen(), "S.A.D.");
