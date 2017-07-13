@@ -9,9 +9,7 @@ package org.jphysics3d.api;
  *
  * @author luis
  */
-public class BasicObjectImpl implements BasicObject {
-
-    @Override
+public class BasicObjectImpl {
     public <E extends BasicObjectImpl> boolean in(E... objs) {
         for (E e : objs) {
             if (this.equals(e)) {
@@ -20,5 +18,4 @@ public class BasicObjectImpl implements BasicObject {
         }
         return false;
     }
-
 }

@@ -12,7 +12,7 @@ import org.jphysics3d.math.Vector3f;
  *
  * @author luis
  */
-public interface GameObject extends BasicObject {
+public interface GameObject {
 
     float getMass();
     Vector3f getPosition();
@@ -21,7 +21,4 @@ public interface GameObject extends BasicObject {
     void update(float secs);
 
     boolean isAlive();
-    
-
-    
 }
