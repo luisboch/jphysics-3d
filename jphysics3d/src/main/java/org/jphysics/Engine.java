@@ -339,7 +339,7 @@ public class Engine implements Serializable {
             steeringCalc.add(control).add(forces).mul(deltaTime);
             // Divide by mass
             steeringCalc.mul(1f / obj.getMass());
-
+            
             final Vector3f newVelocity = new Vector3f(obj.getVelocity()).add(steeringCalc);
             if (newVelocity.length() > obj.getMaxVelocity()) {
                 newVelocity.normalize().mul(obj.getMaxVelocity());
