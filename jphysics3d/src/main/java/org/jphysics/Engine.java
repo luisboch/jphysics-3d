@@ -32,6 +32,7 @@ import org.apache.commons.collections4.Closure;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.IterableUtils;
 import org.apache.commons.collections4.Predicate;
+import org.jphysics.api.Effect;
 import org.jphysics.math.Vector3f;
 import org.jphysics.projectile.Projectile;
 
@@ -51,7 +52,9 @@ public class Engine implements Serializable {
 
     private float width;
     private float height;
+    private float depth;
     private boolean avoidOjectsLeaveMap = false;
+    private boolean destroyOnLeaveMap = false;
     private boolean mapIsLoop = false;
     private List<Action> actions = new ArrayList<Action>();
 
@@ -62,6 +65,11 @@ public class Engine implements Serializable {
     private ControllerResolver controllerResolver = new DefaultControllerResolver();
     private ContactResolver contactResolver = new SimpleContactResolver();
     private ContactListener contactListener = new SimpleContactListener();
+    private DestroyListener destroyListener = new DestroyListener() {
+        @Override
+        public void destroy(GameObject obj) {
+        }
+    };
     private ProjectileResolver projectileResolver = new SimpleProjectileResolver() {
         @Override
         protected Projectile _create(PhysicObject creator, Class<? extends Projectile> type) {
@@ -81,9 +89,10 @@ public class Engine implements Serializable {
      * @param width in metters
      * @param height in metters
      */
-    public Engine(float width, float height) {
+    public Engine(float width, float height, float depth) {
         this.width = width;
         this.height = height;
+        this.depth = depth;
     }
 
     public ObjectController add(ControllableObject actor) {
@@ -123,16 +132,22 @@ public class Engine implements Serializable {
 
         if (avoidOjectsLeaveMap) {
 
-            if (pos.y < 0) {
-                pos.y = 0;
+            if (pos.y < -height) {
+                pos.y = -height;
             } else if (pos.y > height) {
                 pos.y = height;
             }
 
-            if (pos.x < 0) {
-                pos.x = 0;
+            if (pos.x < -width) {
+                pos.x = -width;
             } else if (pos.x > width) {
-                pos.y = width;
+                pos.x = width;
+            }
+
+            if (pos.z < -depth) {
+                pos.z = -depth;
+            } else if (pos.x > depth) {
+                pos.z = depth;
             }
 
             actor.setPosition(pos);
@@ -190,7 +205,7 @@ public class Engine implements Serializable {
 
     }
 
-    public  <E extends PhysicObject> E getClosestActor(Vector3f center, Float viewSize, Class<E> type) {
+    public <E extends PhysicObject> E getClosestActor(Vector3f center, Float viewSize, Class<E> type) {
 
         final List<Class<E>> allowedTypes = new ArrayList<Class<E>>(1);
         allowedTypes.add(type);
@@ -203,7 +218,7 @@ public class Engine implements Serializable {
         return getClosestActor(center, viewSize, list, new ArrayList<PhysicObject>());
     }
 
-    public <E extends PhysicObject>  List<E> getActorsByType(Class<E> filter) {
+    public <E extends PhysicObject> List<E> getActorsByType(Class<E> filter) {
         List<Class<E>> list = new ArrayList<Class<E>>();
         list.add(filter);
         return getActorsByType(list, Collections.EMPTY_LIST);
@@ -229,7 +244,7 @@ public class Engine implements Serializable {
         return result;
     }
 
-    public  <E extends PhysicObject> E getClosestActor(Vector3f center, Float viewSize, List<Class<E>> allowedTypes, List<PhysicObject> ignored) {
+    public <E extends PhysicObject> E getClosestActor(Vector3f center, Float viewSize, List<Class<E>> allowedTypes, List<PhysicObject> ignored) {
         if (center == null || viewSize == null) {
             throw new IllegalArgumentException("All params are required!");
         }
@@ -289,57 +304,60 @@ public class Engine implements Serializable {
 
             obj.update(deltaTime);
 
-            resolveImpact(obj, fullList);
-
-            /**
-             * Primeiro calcula as forças.<br>
-             * <ul>
-             * <li>1 Sterring; </li>
-             * <li>2 Gravidade; </li>
-             * <li>3 Outras forças quaisquer (vendo, magnetismo, etc); </li>
-             * </ul>
-             * Depois multiplica a soma das forças pelo tempo gasto no loop
-             * (secs) e limita pela força máxima do objeto (questionável). <br>
-             * <br>
-             * Aplica a variação da massa (força divida pela massa). <br>
-             * <br>
-             * Seta velocidade no objeto, considerando a soma da força.<br>
-             * Move o objeto, de acordo com a velocidade atual (já com a força
-             * aplicada) multiplicado pelo tempo gasto no loop (secs).
-             */
-            if (obj instanceof Projectile) {
-                Projectile pro = (Projectile) obj;
-                if (!pro.isAlive()) {
-                    createExplosion(pro);
-                } else if (pro.isTimedOut()) {
-                    createExplosion(pro);
-                }
-            } else if (obj instanceof Force) {
-                continue;
-            }
-
             final Vector3f steeringCalc = (obj instanceof SelfOperatedObject) ? calculateSteering((SelfOperatedObject) obj) : new Vector3f();
 
-            final Vector3f control;
-            final Vector3f forces;
+            if (!(obj instanceof Effect)) {
+                resolveImpact(obj, fullList);
 
-            if (!(obj instanceof Force)) {
-                if (obj instanceof ControllableObject) {
-                    control = calculateControl((ControllableObject) obj);
-                } else {
-                    control = new Vector3f();
+                /**
+                 * Primeiro calcula as forças.<br>
+                 * <ul>
+                 * <li>1 Sterring; </li>
+                 * <li>2 Gravidade; </li>
+                 * <li>3 Outras forças quaisquer (vendo, magnetismo, etc); </li>
+                 * </ul>
+                 * Depois multiplica a soma das forças pelo tempo gasto no loop
+                 * (secs) e limita pela força máxima do objeto (questionável).
+                 * <br>
+                 * <br>
+                 * Aplica a variação da massa (força divida pela massa). <br>
+                 * <br>
+                 * Seta velocidade no objeto, considerando a soma da força.<br>
+                 * Move o objeto, de acordo com a velocidade atual (já com a
+                 * força aplicada) multiplicado pelo tempo gasto no loop (secs).
+                 */
+                if (obj instanceof Projectile) {
+                    Projectile pro = (Projectile) obj;
+                    if (!pro.isAlive()) {
+                        createExplosion(pro);
+                    } else if (pro.isTimedOut()) {
+                        createExplosion(pro);
+                    }
+                } else if (obj instanceof Force) {
+                    continue;
                 }
 
-                forces = calculateForceInfluence(obj);
-            } else {
-                control = new Vector3f();
-                forces = new Vector3f();
+                final Vector3f control;
+                final Vector3f forces;
+
+                if (!(obj instanceof Force)) {
+                    if (obj instanceof ControllableObject) {
+                        control = calculateControl((ControllableObject) obj);
+                    } else {
+                        control = new Vector3f();
+                    }
+
+                    forces = calculateForceInfluence(obj);
+                } else {
+                    control = new Vector3f();
+                    forces = new Vector3f();
+                }
+
+                steeringCalc.add(control).add(forces).mul(deltaTime);
+                // Divide by mass
+                steeringCalc.mul(1f / obj.getMass());
             }
 
-            steeringCalc.add(control).add(forces).mul(deltaTime);
-            // Divide by mass
-            steeringCalc.mul(1f / obj.getMass());
-            
             final Vector3f newVelocity = new Vector3f(obj.getVelocity()).add(steeringCalc);
             if (newVelocity.length() > obj.getMaxVelocity()) {
                 newVelocity.normalize().mul(obj.getMaxVelocity());
@@ -351,37 +369,54 @@ public class Engine implements Serializable {
                 obj.setPosition(obj.getPosition().add(velSec));
             }
 
-            if (avoidOjectsLeaveMap) {
-                if (!mapIsLoop) {
-                    final Vector3f vel = obj.getVelocity();
-                    if (obj.getPosition().x > width && obj.getVelocity().x > 0) {
-                        vel.x = -vel.x;
-                    }
-                    if (obj.getPosition().x < 0 && obj.getVelocity().x < 0) {
-                        vel.x = -vel.x;
-                    }
-                    if (obj.getPosition().y > height && obj.getVelocity().y > 0) {
-                        vel.y = -vel.y;
-                    }
-                    if (obj.getPosition().y < 0 && obj.getVelocity().y < 0) {
-                        vel.y = -vel.y;
-                    }
-                    obj.setVelocity(vel);
-                } else {
-                    Vector3f pos = obj.getPosition();
+            if (avoidOjectsLeaveMap && !(obj instanceof Effect)) {
+                Vector3f pos = obj.getPosition();
+                if (isOnLimit(pos)) {
+                    if (destroyOnLeaveMap) {
+                        deadObjects.add(obj);
+                    } else if (!mapIsLoop) {
+                        final Vector3f vel = obj.getVelocity();
+                        if (pos.x > width && obj.getVelocity().x > 0) {
+                            vel.x = -vel.x;
+                        }
+                        if (pos.x < -width && obj.getVelocity().x < 0) {
+                            vel.x = -vel.x;
+                        }
+                        if (pos.y > height && obj.getVelocity().y > 0) {
+                            vel.y = -vel.y;
+                        }
+                        if (pos.y < -height && obj.getVelocity().y < 0) {
+                            vel.y = -vel.y;
+                        }
 
-                    if (pos.x < 0) {
-                        pos.x = width;
-                    } else if (pos.x > width) {
-                        pos.x = width;
-                    }
+                        if (pos.z > depth && obj.getVelocity().z > 0) {
+                            vel.y = -vel.y;
+                        }
 
-                    if (pos.y < 0) {
-                        pos.y = height;
-                    } else if (pos.y > height) {
-                        pos.y = height;
-                    }
+                        if (pos.z < -depth && obj.getVelocity().z < 0) {
+                            vel.y = -vel.y;
+                        }
+                        obj.setVelocity(vel);
+                    } else {
 
+                        if (pos.x < -width) {
+                            pos.x = width;
+                        } else if (pos.x > width) {
+                            pos.x = width;
+                        }
+
+                        if (pos.y < -height) {
+                            pos.y = -height;
+                        } else if (pos.y > height) {
+                            pos.y = height;
+                        }
+
+                        if (pos.z < -depth) {
+                            pos.z = -depth;
+                        } else if (pos.z > depth) {
+                            pos.z = depth;
+                        }
+                    }
                 }
             }
         }
@@ -480,7 +515,7 @@ public class Engine implements Serializable {
 
     private void removeDeadObjects() {
 
-        GameObject obj = null;
+        GameObject obj;
 
         while ((obj = deadObjects.poll()) != null) {
 
@@ -491,6 +526,8 @@ public class Engine implements Serializable {
             if (obj instanceof PhysicObject) {
                 actors.remove((PhysicObject) obj);
             }
+
+            destroyListener.destroy(obj);
 
         }
 
@@ -551,6 +588,10 @@ public class Engine implements Serializable {
         }
     }
 
+    private boolean isOnLimit(Vector3f pos) {
+        return pos.y < -height || pos.y > height || pos.x < -width || pos.x > width || pos.z < -depth || pos.x > depth;
+    }
+
     public ProjectileResolver getProjectileResolver() {
         return projectileResolver;
     }
@@ -563,4 +604,11 @@ public class Engine implements Serializable {
         return height;
     }
 
+    public void setDestroyListener(DestroyListener destroyListener) {
+        this.destroyListener = destroyListener;
+    }
+
+    public void setDestroyOnLeaveMap(boolean destroyOnLeaveMap) {
+        this.destroyOnLeaveMap = destroyOnLeaveMap;
+    }
 }
