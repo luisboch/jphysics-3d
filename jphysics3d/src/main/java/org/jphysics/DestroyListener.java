@@ -11,6 +11,7 @@ import org.jphysics.api.GameObject;
  *
  * @author luis
  */
+@FunctionalInterface
 public interface DestroyListener {
     void destroy(GameObject obj);
 }

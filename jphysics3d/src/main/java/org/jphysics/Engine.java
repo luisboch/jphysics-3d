@@ -74,7 +74,7 @@ public class Engine implements Serializable {
         @Override
         protected Projectile _create(PhysicObject creator, Class<? extends Projectile> type) {
             try {
-                return type.newInstance();
+                return type.getDeclaredConstructor().newInstance();
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
